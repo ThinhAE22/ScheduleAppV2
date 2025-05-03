@@ -12,6 +12,10 @@ const middleware = require('./utils/middleware')
 const logger = require('./utils/logger')
 const mongoose = require('mongoose')
 
+// Schedule the task to run every Monday at 00:00 (midnight)
+const cron = require('node-cron')
+const Schedule = require('./models/schedule')
+
 mongoose.set('strictQuery', false)
 
 logger.info('connecting to', config.MONGODB_URL)
@@ -43,5 +47,15 @@ app.use('/api/schedules', middleware.userExtractor, schedulesRouter);
 
 app.use(middleware.unknownEndpoint)
 app.use(middleware.errorHandler)
+
+// Set up cron job
+cron.schedule('0 0 * * 1', async () => {
+  try {
+    await Schedule.deleteMany({});
+    console.log('✅ All schedules deleted automatically (cron job)');
+  } catch (error) {
+    console.error('❌ Error during automatic schedule reset:', error.message);
+  }
+});
 
 module.exports = app
