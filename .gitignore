@@ -39,3 +39,6 @@ target/
 *.bak
 *.tmp
 *.lock
+
+# initiate of admin
+.utils/createAdmin.js
