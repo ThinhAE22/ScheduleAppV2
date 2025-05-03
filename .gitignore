@@ -32,7 +32,6 @@ __pycache__/
 .env.local
 
 # Build directories
-dist/
 build/
 target/
 
