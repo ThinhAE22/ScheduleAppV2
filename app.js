@@ -6,6 +6,7 @@ const cors = require('cors')
 const usersRouter = require('./controllers/users')
 const loginRouter = require('./controllers/login')
 const schedulesRouter = require('./controllers/schedules')
+const machinesRouter = require('./controllers/machines')
 
 
 const middleware = require('./utils/middleware')
@@ -37,6 +38,7 @@ app.use(middleware.requestLogger)
 app.use('/api/schedules', schedulesRouter)
 app.use('/api/users', usersRouter)
 app.use('/api/login', loginRouter)
+app.use('/api/machines',machinesRouter)
 
 
 if (process.env.NODE_ENV === 'test') {
@@ -45,6 +47,9 @@ if (process.env.NODE_ENV === 'test') {
 }
 
 app.use('/api/schedules', middleware.userExtractor, schedulesRouter);
+app.use('/api/users', middleware.userExtractor, middleware.requireAdmin, usersRouter);
+app.use('/api/login', middleware.userExtractor, loginRouter);
+app.use('/api/machines', middleware.userExtractor, middleware.requireAdmin, machinesRouter);
 
 app.use(middleware.unknownEndpoint)
 app.use(middleware.errorHandler)
