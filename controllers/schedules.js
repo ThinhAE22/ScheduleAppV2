@@ -3,7 +3,7 @@ const { now } = require('lodash');
 const Schedule = require('../models/schedule');
 const User = require('../models/user');
 const jwt = require('jsonwebtoken');
-const moment = require('moment');
+const moment = require('moment-timezone');
 
 // Helper function to extract token from Authorization header
 const getTokenFrom = request => {
@@ -114,7 +114,8 @@ schedulesRouter.delete('/:id', userExtractor, async (request, response) => {
         const [hour, minute] = time.split(':').map(Number);
 
         // Create a moment object for the current week's scheduled time
-        return moment().day(day).hour(hour).minute(minute).second(0);
+        return moment.tz('Europe/Helsinki').day(day).hour(hour).minute(minute).second(0);
+
     }
 
     try {
@@ -129,7 +130,7 @@ schedulesRouter.delete('/:id', userExtractor, async (request, response) => {
             return response.status(403).json({ error: 'Permission denied' });
         }
 
-        const now = moment();
+        const now = moment.tz('Europe/Helsinki'); // or your desired timezone;
         const scheduleDateTime = getScheduleMoment(schedule);
         const diffInMinutes = scheduleDateTime.diff(now, 'minutes');
 

@@ -14,6 +14,7 @@ const mongoose = require('mongoose')
 
 // Schedule the task to run every Monday at 00:00 (midnight)
 const cron = require('node-cron')
+const moment = require('moment-timezone');
 const Schedule = require('./models/schedule')
 
 mongoose.set('strictQuery', false)
@@ -49,13 +50,19 @@ app.use(middleware.unknownEndpoint)
 app.use(middleware.errorHandler)
 
 // Set up cron job
-cron.schedule('0 0 * * 1', async () => {
-  try {
-    await Schedule.deleteMany({});
-    console.log('✅ All schedules deleted automatically (cron job)');
-  } catch (error) {
-    console.error('❌ Error during automatic schedule reset:', error.message);
+cron.schedule(
+  '0 0 * * 1',
+  async () => {
+    try {
+      await Schedule.deleteMany({});
+      console.log('✅ All schedules deleted automatically (cron job)');
+    } catch (error) {
+      console.error('❌ Error during automatic schedule reset:', error.message);
+    }
+  },
+  {
+    timezone: 'Europe/Helsinki'
   }
-});
+);
 
 module.exports = app
