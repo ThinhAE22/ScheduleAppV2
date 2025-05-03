@@ -121,7 +121,7 @@ schedulesRouter.delete('/:id', userExtractor, async (request, response) => {
             return response.status(403).json({ error: 'Permission denied' });
         }
 
-        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        const days = ['Sunday','Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         const dayIndex = days.indexOf(schedule.day);
 
         const hour = parseInt(schedule.time.split(':')[0]);
@@ -129,7 +129,7 @@ schedulesRouter.delete('/:id', userExtractor, async (request, response) => {
         const scheduleDateTime = moment().startOf('week').add(dayIndex, 'days').hour(hour).minute(0).second(0);
 
         const diffInMinutes = scheduleDateTime.diff(now, 'minutes');
-        if (diffInMinutes < 30) {
+        if (diffInMinutes <= 30) {
             return response.status(403).json({ error: 'Cannot delete a schedule less than 30 minutes before it starts' });
         }
 
