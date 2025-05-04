@@ -18,6 +18,7 @@ const createAdmin = async () => {
     const admin = new User({
       username: 'admin',
       name: 'Super Admin',
+      email: 'komea.admin@gmail.com',
       passwordHash,
       role: 'admin',
     })

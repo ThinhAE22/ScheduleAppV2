@@ -5,15 +5,24 @@ const { userExtractor, requireAdmin } = require('../utils/middleware');
 
 // Create user (anyone can register, optional: restrict setting admin)
 usersRouter.post('/', userExtractor, requireAdmin, async (req, res, next) => {
-  const { username, name, password, role = 'user' } = req.body
+  const { username, email, name, password, role = 'user' } = req.body
 
-  if (!username || !password) {
-    const missingField = !username ? 'Username' : 'Password'
-    return res.status(400).json({ error: `${missingField} is required` })
+  if (!username || !password || !email) {
+    const missingFields = []
+    if (!username) missingFields.push('Username')
+    if (!email) missingFields.push('Email')
+    if (!password) missingFields.push('Password')
+    return res.status(400).json({ error: `${missingFields.join(', ')} required` })
   }
 
   if (username.length < 3 || password.length < 3) {
     return res.status(400).json({ error: 'Username and password must be at least 3 characters long' })
+  }
+
+  // Basic email format check
+  const emailRegex = /\S+@\S+\.\S+/
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ error: 'Invalid email address' })
   }
 
   try {
@@ -21,20 +30,23 @@ usersRouter.post('/', userExtractor, requireAdmin, async (req, res, next) => {
 
     const user = new User({
       username,
+      email,
       name,
       passwordHash,
-      role // only admin can set this because of middleware
+      role
     })
 
     const savedUser = await user.save()
     res.status(201).json(savedUser)
   } catch (error) {
     if (error.name === 'MongoServerError' && error.code === 11000) {
-      return res.status(400).json({ error: 'Username must be unique' })
+      const duplicateKey = Object.keys(error.keyValue)[0]
+      return res.status(400).json({ error: `${duplicateKey.charAt(0).toUpperCase() + duplicateKey.slice(1)} must be unique` })
     }
     next(error)
   }
 })
+
 
 
 

@@ -7,6 +7,7 @@ const usersRouter = require('./controllers/users')
 const loginRouter = require('./controllers/login')
 const schedulesRouter = require('./controllers/schedules')
 const machinesRouter = require('./controllers/machines')
+const PasswordResetRouter = require('./controllers/passwordReset')
 
 
 const middleware = require('./utils/middleware')
@@ -39,6 +40,7 @@ app.use('/api/schedules', schedulesRouter)
 app.use('/api/users', usersRouter)
 app.use('/api/login', loginRouter)
 app.use('/api/machines',machinesRouter)
+app.use('/api/password-reset', PasswordResetRouter);
 
 
 if (process.env.NODE_ENV === 'test') {
