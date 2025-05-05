@@ -23,7 +23,7 @@ router.post('/request-reset', async (req, res) => {
   }
 });
 
-router.post('/resetPassword', async (req, res) => {
+router.post('/', async (req, res) => {
     let { userId, resetString, newPassword } = req.body;
 
     try {

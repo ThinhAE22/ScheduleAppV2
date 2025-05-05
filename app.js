@@ -2,7 +2,7 @@ const config = require('./utils/config')
 const express = require('express')
 const app = express()
 const cors = require('cors')
-
+const path = require('path')
 const usersRouter = require('./controllers/users')
 const loginRouter = require('./controllers/login')
 const schedulesRouter = require('./controllers/schedules')
@@ -32,26 +32,28 @@ mongoose.connect(config.MONGODB_URL)
   })
 
 app.use(cors())
-app.use(express.static('dist'))
 app.use(express.json())
 app.use(middleware.requestLogger)
+const distPath = path.join(__dirname, 'dist');
 
+// Serve static files
+app.use(express.static(distPath));
 app.use('/api/schedules', schedulesRouter)
 app.use('/api/users', usersRouter)
 app.use('/api/login', loginRouter)
 app.use('/api/machines',machinesRouter)
 app.use('/api/password-reset', PasswordResetRouter);
+// Handle all other routes by returning index.html
+app.get('*', (req, res) => {
+  res.sendFile(path.join(distPath, 'index.html'));
+});
+
 
 
 if (process.env.NODE_ENV === 'test') {
   const testingRouter = require('./controllers/testing')
   app.use('/api/testing', testingRouter)
 }
-
-app.use('/api/schedules', middleware.userExtractor, schedulesRouter);
-app.use('/api/users', middleware.userExtractor, middleware.requireAdmin, usersRouter);
-app.use('/api/login', middleware.userExtractor, loginRouter);
-app.use('/api/machines', middleware.userExtractor, middleware.requireAdmin, machinesRouter);
 
 app.use(middleware.unknownEndpoint)
 app.use(middleware.errorHandler)
@@ -71,5 +73,6 @@ cron.schedule(
     timezone: 'Europe/Helsinki'
   }
 );
+
 
 module.exports = app

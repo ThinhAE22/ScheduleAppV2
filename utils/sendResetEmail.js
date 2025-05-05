@@ -16,7 +16,7 @@ const sendResetEmail = ({ _id, email }, redirectURL, res) => {
                 subject: 'Password Reset',
                 html: `<p>You requested a password reset</p>
                        <p>The link expires in 60 min</p>
-                       <p>Click <a href="${redirectURL}/reset/${_id}/${resetString}">here</a> to reset your password</p>`
+                       <p>Click <a href="${redirectURL}/password-reset/${_id}/${resetString}">here</a> to reset your password</p>`
             };
 
             const saltRounds = 10;
