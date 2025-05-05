@@ -51,12 +51,47 @@ schedulesRouter.get('/', async (request, response) => {
 
 // POST new blog
 schedulesRouter.post('/', userExtractor, async (request, response) => {
-    const { day, time, washingMachine, dryerMachine } = request.body;
+    const { day, timeWashing, timeDryer, washingMachine, dryerMachine } = request.body;
     const user = request.user;
 
-    if (!day || !time || (!washingMachine && !dryerMachine)) {
-        return response.status(400).json({ error: 'Day, time, and at least one machine (Dryer or Washing) are required' });
+    if (!day) {
+        return response.status(400).json({ error: 'Day are required' });
     }
+
+    // If neither washing nor dryer pair is fully provided
+    const hasWashing = timeWashing && washingMachine;
+    const hasDryer = timeDryer && dryerMachine;
+
+    if (!hasWashing && !hasDryer) {
+        return response.status(400).json({ error: 'At least one machine-time pair (washing or dryer) is required' });
+    }
+
+    const overlappingConditions = [];
+
+    if (washingMachine && timeWashing) {
+    overlappingConditions.push({
+        day,
+        washingMachine,
+        timeWashing
+    });
+    }
+
+    if (dryerMachine && timeDryer) {
+    overlappingConditions.push({
+        day,
+        dryerMachine,
+        timeDryer
+    });
+    }
+
+    if (overlappingConditions.length > 0) {
+    const conflict = await Schedule.findOne({ $or: overlappingConditions });
+
+    if (conflict) {
+        return response.status(400).json({ error: 'This time slot is already booked for the selected machine.' });
+    }
+    }
+
 
     try {
         // Check if the user already has any schedule (i.e., one per week)
@@ -68,7 +103,8 @@ schedulesRouter.post('/', userExtractor, async (request, response) => {
 
         const schedule = new Schedule({
             day,
-            time,
+            timeWashing,
+            timeDryer,
             washingMachine,
             dryerMachine,
             user: user._id,
@@ -106,42 +142,41 @@ schedulesRouter.delete('/:id', userExtractor, async (request, response) => {
     const { id } = request.params;
     const user = request.user; // Extracted from the token by userExtractor
 
-    // Function to combine schedule day and time
-    // Function to return a moment object for the schedule's day and time
     function getScheduleMoment(schedule) {
-        const day = schedule.day; // e.g. "Monday"
-        const time = schedule.time; // e.g. "11:00"
+        const day = schedule.day; // e.g. "Sunday"
+        const time = schedule.timeWashing || schedule.timeDryer; 
         const [hour, minute] = time.split(':').map(Number);
-
-        // Create a moment object for the current week's scheduled time
-        return moment.tz('Europe/Helsinki').day(day).hour(hour).minute(minute).second(0);
-
+ 
+        let scheduleMoment = moment.tz('Europe/Helsinki').isoWeekday(day).hour(hour).minute(minute).second(0);
+    
+    
+        return scheduleMoment;
     }
 
     try {
-        const schedule = await Schedule.findById(id).populate('user'); // Populate the user field
-
+        const schedule = await Schedule.findById(id).populate('user');
         if (!schedule) {
             return response.status(404).json({ error: 'Schedule not found' });
         }
 
-        // Check if the schedule belongs to the authenticated user
         if (schedule.user._id.toString() !== user._id.toString()) {
             return response.status(403).json({ error: 'Permission denied' });
         }
 
-        const now = moment.tz('Europe/Helsinki'); // or your desired timezone;
+        const now = moment.tz('Europe/Helsinki');
         const scheduleDateTime = getScheduleMoment(schedule);
-        const diffInMinutes = scheduleDateTime.diff(now, 'minutes');
+        console.log("Current time (now):", now.format());
+        console.log("Scheduled time (scheduleDateTime):", scheduleDateTime.format());
 
-        // If the difference is less than or equal to 30 minutes, disallow deletion
+        const diffInMinutes = scheduleDateTime.diff(now, 'minutes');
+        console.log("Time difference in minutes:", diffInMinutes);
+
         if (diffInMinutes <= 30) {
             return response.status(403).json({ error: 'Cannot delete a schedule less than 30 minutes before it starts' });
         }
 
-        // If more than 30 minutes, proceed with deletion
         await Schedule.deleteOne({ _id: id });
-        response.status(204).end(); // Successfully deleted
+        response.status(204).end();
 
     } catch (error) {
         console.error('Error during deletion:', error.message);

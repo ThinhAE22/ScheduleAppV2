@@ -11,9 +11,18 @@ const scheduleSchema = new mongoose.Schema({
     required: true,
     enum: days,
   },
-  time: {
+  timeWashing: {
     type: String,
-    required: true,
+    required: function () {
+      return this.washingMachine != null;
+    },
+    enum: hours,
+  },
+  timeDryer: {
+    type: String,
+    required: function () {
+      return this.dryerMachine != null;
+    },
     enum: hours,
   },
   washingMachine: {
@@ -26,12 +35,11 @@ const scheduleSchema = new mongoose.Schema({
     enum: dryerMachines,
     default: null,
   },
-  
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }
-})
+});
 
 scheduleSchema.set('toJSON', {
   transform: (document, returnedObject) => {
