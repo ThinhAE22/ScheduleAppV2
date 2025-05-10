@@ -44,9 +44,11 @@ app.use('/api/login', loginRouter)
 app.use('/api/machines',machinesRouter)
 app.use('/api/password-reset', PasswordResetRouter);
 // Handle all other routes by returning index.html
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(distPath, 'index.html'));
 });
+
 
 
 
@@ -60,17 +62,18 @@ app.use(middleware.errorHandler)
 
 // Set up cron job
 cron.schedule(
-  '0 0 * * 1',
+  '0 0 * * *',
   async () => {
     try {
-      await Schedule.deleteMany({});
-      console.log('✅ All schedules deleted automatically (cron job)');
+      const now = new Date();
+      const result = await Schedule.deleteMany({ date: { $lt: now } });
+      console.log(`✅ Deleted ${result.deletedCount} past schedules (cron job)`);
     } catch (error) {
-      console.error('❌ Error during automatic schedule reset:', error.message);
+      console.error('❌ Error during automatic schedule cleanup:', error.message);
     }
   },
   {
-    timezone: 'Europe/Helsinki'
+    timezone: 'Europe/Helsinki',
   }
 );
 

@@ -50,63 +50,49 @@ schedulesRouter.get('/', async (request, response) => {
 
 
 // POST new blog
-schedulesRouter.post('/', userExtractor, async (request, response) => {
-    const { day, timeWashing, timeDryer, washingMachine, dryerMachine } = request.body;
+// add , userExtractor later
+schedulesRouter.post('/',userExtractor, async (request, response) => {
+    const { date, timeStart, timeEnd, printer3DMachine } = request.body;
     const user = request.user;
 
-    if (!day) {
-        return response.status(400).json({ error: 'Day are required' });
+    // Check for missing fields
+    if (!date || !timeStart || !timeEnd || !printer3DMachine) {
+        return response.status(400).json({ error: 'All fields (date, timeStart, timeEnd, printer3DMachine) are required' });
     }
-
-    // If neither washing nor dryer pair is fully provided
-    const hasWashing = timeWashing && washingMachine;
-    const hasDryer = timeDryer && dryerMachine;
-
-    if (!hasWashing && !hasDryer) {
-        return response.status(400).json({ error: 'At least one machine-time pair (washing or dryer) is required' });
-    }
-
-    const overlappingConditions = [];
-
-    if (washingMachine && timeWashing) {
-    overlappingConditions.push({
-        day,
-        washingMachine,
-        timeWashing
-    });
-    }
-
-    if (dryerMachine && timeDryer) {
-    overlappingConditions.push({
-        day,
-        dryerMachine,
-        timeDryer
-    });
-    }
-
-    if (overlappingConditions.length > 0) {
-    const conflict = await Schedule.findOne({ $or: overlappingConditions });
-
-    if (conflict) {
-        return response.status(400).json({ error: 'This time slot is already booked for the selected machine.' });
-    }
-    }
-
 
     try {
-        // Check if the user already has any schedule (i.e., one per week)
-        const hasExistingBooking = await Schedule.findOne({ user: user._id });
-
-        if (hasExistingBooking) {
-            return response.status(400).json({ error: 'You already have a booking for this week' });
+        // Convert date to a Date object for accurate comparison
+        const scheduleDate = new Date(date);
+        
+        // Ensure the date is not in the past
+        if (scheduleDate < new Date().setHours(0, 0, 0, 0)) {
+            return response.status(400).json({ error: 'Date cannot be in the past' });
         }
 
+        // Check for overlapping schedules
+        const overlappingConditions = [
+            { date: scheduleDate, printer3DMachine },
+            {
+                $or: [
+                    { timeStart: { $lt: timeEnd }, timeEnd: { $gt: timeStart } },
+                    { timeStart: { $gte: timeStart, $lt: timeEnd } },
+                    { timeEnd: { $gt: timeStart, $lte: timeEnd } },
+                ],
+            }
+        ];
+
+        const conflict = await Schedule.findOne({ $and: overlappingConditions });
+
+        if (conflict) {
+            return response.status(400).json({ error: 'This time slot is already booked for the selected machine.' });
+        }
+
+        // Create and save the schedule
         const schedule = new Schedule({
-            day,
-            timeWashing,
-            timeDryer,
-            washingMachine,
-            dryerMachine,
+            date: scheduleDate,
+            timeStart,
+            timeEnd,
+            printer3DMachine,
             user: user._id,
         });
 
@@ -124,7 +110,6 @@ schedulesRouter.post('/', userExtractor, async (request, response) => {
 
 //Delete all schedules Debug only
 
-/*
 schedulesRouter.delete('/all', async (request, response) => {
 
     try {
@@ -135,23 +120,26 @@ schedulesRouter.delete('/all', async (request, response) => {
         response.status(500).json({ error: 'Internal server error', details: error.message });
     }
 });
-*/ 
+
 
 // DELETE schedules id based
 schedulesRouter.delete('/:id', userExtractor, async (request, response) => {
     const { id } = request.params;
     const user = request.user; // Extracted from the token by userExtractor
 
-    function getScheduleMoment(schedule) {
-        const day = schedule.day; // e.g. "Sunday"
-        const time = schedule.timeWashing || schedule.timeDryer; 
-        const [hour, minute] = time.split(':').map(Number);
- 
-        let scheduleMoment = moment.tz('Europe/Helsinki').isoWeekday(day).hour(hour).minute(minute).second(0);
-    
-    
-        return scheduleMoment;
-    }
+    const getScheduleMoment = (schedule) => {
+    const date = schedule.date; // This is already a Date object
+    const startTime = schedule.timeStart; // e.g., "07:30"
+    const [startHour, startMinute] = startTime.split(':').map(Number);
+
+    // Use the date directly and set the correct start time
+    const startMoment = moment.tz(date, 'Europe/Helsinki')
+        .hour(startHour)
+        .minute(startMinute)
+        .second(0);
+
+    return startMoment;
+}
 
     try {
         const schedule = await Schedule.findById(id).populate('user');
@@ -164,13 +152,16 @@ schedulesRouter.delete('/:id', userExtractor, async (request, response) => {
         }
 
         const now = moment.tz('Europe/Helsinki');
-        const scheduleDateTime = getScheduleMoment(schedule);
+        const startMoment = getScheduleMoment(schedule);
         console.log("Current time (now):", now.format());
-        console.log("Scheduled time (scheduleDateTime):", scheduleDateTime.format());
+        console.log("Scheduled start time (startMoment):", startMoment.format());
 
-        const diffInMinutes = scheduleDateTime.diff(now, 'minutes');
+        // Calculate the time difference in minutes
+        const diffInMinutes = startMoment.diff(now, 'minutes');
         console.log("Time difference in minutes:", diffInMinutes);
 
+        
+        // Check if the schedule can be deleted
         if (diffInMinutes <= 30) {
             return response.status(403).json({ error: 'Cannot delete a schedule less than 30 minutes before it starts' });
         }
@@ -183,6 +174,7 @@ schedulesRouter.delete('/:id', userExtractor, async (request, response) => {
         response.status(500).json({ error: 'Internal server error', details: error.message });
     }
 });
+
 
 
 module.exports = schedulesRouter;

@@ -15,32 +15,28 @@ machinesRouter.get('/types', async (req, res, next) => {
   try {
     const machines = await Machine.find({})
 
-    const washingMachines = machines
-      .filter((m) => m.washingMachine)
-      .map((m) => m.washingMachine)
+    const printer3DMachines = machines
+      .filter((m) => m.printer3DMachine)
+      .map((m) => m.printer3DMachine)
 
-    const dryerMachines = machines
-      .filter((m) => m.dryerMachine)
-      .map((m) => m.dryerMachine)
-
-    res.json({ washingMachines, dryerMachines })
+    res.json({printer3DMachines})
   } catch (error) {
     next(error)
   }
 })
 
 // Create user (anyone can register, optional: restrict setting admin)
+// add /*userExtractor*/, /*requireAdmin*/ later
 machinesRouter.post('/', userExtractor, requireAdmin, async (req, res, next) => {
-    const {washingMachine, dryerMachine} = req.body
+    const {printer3DMachine} = req.body
   
-    if (!washingMachine && !dryerMachine) {
-        return res.status(400).json({ error: 'At least one of washingMachine or dryerMachine is required' });
+    if (!printer3DMachine) {
+        return res.status(400).json({ error: 'Require an facility e.g 3D printer to update' });
     }
   
     try {
       const machine = new Machine({
-        washingMachine,
-        dryerMachine,
+        printer3DMachine
       })
   
       const savedMachine = await machine.save()
@@ -53,6 +49,7 @@ machinesRouter.post('/', userExtractor, requireAdmin, async (req, res, next) => 
     }
   })
 
+// add /*userExtractor*/, /*requireAdmin*/ later
 machinesRouter.delete('/:id', userExtractor, requireAdmin, async (req, res, next) => {
     try {
       const deletedMachine = await Machine.findByIdAndDelete(req.params.id);
